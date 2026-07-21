@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     payment_method TEXT DEFAULT 'UPI' CHECK (payment_method IN ('UPI', 'cash', 'card', 'bank_transfer', 'other')),
     need_vs_want TEXT CHECK (need_vs_want IN ('need', 'want')),
     is_recurring BOOLEAN DEFAULT false NOT NULL,
+    is_business BOOLEAN DEFAULT false NOT NULL,
+    business_category TEXT,
     gps_lat DOUBLE PRECISION,
     gps_long DOUBLE PRECISION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
@@ -257,3 +259,36 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_voice_logs_user_id ON voice_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_transaction_id ON receipts(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_expenses_user_id ON recurring_expenses(user_id);
+
+-- 19. STOCK CATALOG ITEMS (Bill Book)
+CREATE TABLE IF NOT EXISTS stock_items (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    quantity INTEGER DEFAULT 0 NOT NULL,
+    cost_price DECIMAL(15, 2) DEFAULT 0.00 NOT NULL,
+    selling_price DECIMAL(15, 2) DEFAULT 0.00 NOT NULL,
+    low_stock_limit INTEGER DEFAULT 5 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 20. DAILY CASH BOOK LOGS (Bill Book)
+CREATE TABLE IF NOT EXISTS cash_book_logs (
+    id TEXT PRIMARY KEY,
+    date DATE NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('in', 'out')),
+    description TEXT,
+    payment_method TEXT DEFAULT 'cash' NOT NULL
+);
+
+-- 21. CLIENTS & UDHAAR LEDGER (Bill Book / CRM)
+CREATE TABLE IF NOT EXISTS clients (
+    id TEXT PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    contact_person TEXT,
+    email TEXT,
+    phone TEXT,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'vip', 'inactive')),
+    outstanding_amount DECIMAL(15, 2) DEFAULT 0.00 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
