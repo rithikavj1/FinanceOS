@@ -9,7 +9,6 @@ import {
   Client, StockItem, CashBookLog
 } from '@/types';
 import * as mockSeeds from './mockData';
-import { supabase } from './supabaseClient';
 
 interface OnboardingData {
   age: number;
@@ -289,41 +288,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const saveState = async (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
 
-    if (supabase) {
-      try {
-        const tableMap: Record<string, string> = {
-          'fo_transactions': 'transactions',
-          'fo_stockItems': 'stock_items',
-          'fo_cashBook': 'cash_book_logs',
-          'fo_clients': 'clients',
-          'fo_invoices': 'invoices',
-          'fo_notifications': 'notifications',
-          'fo_goals': 'goals',
-          'fo_accounts': 'accounts'
-        };
-
-        const tableName = tableMap[key];
-        if (tableName && Array.isArray(data)) {
-          const dbRows = data.map(item => {
-            const row: any = {};
-            Object.entries(item).forEach(([propName, val]) => {
-              // Convert camelCase properties to snake_case column names
-              const colName = propName.replace(/([A-Z])/g, "_$1").toLowerCase();
-              row[colName] = val;
-            });
-            if (!row.user_id && tableName !== 'stock_items' && tableName !== 'cash_book_logs' && tableName !== 'clients') {
-              row.user_id = 'u1';
-            }
-            return row;
-          });
-
-          if (dbRows.length > 0) {
-            await supabase.from(tableName).upsert(dbRows);
-          }
+    // Asynchronously sync to Neon serverless database via Route Handler API
+    try {
+      fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, data })
+      }).then(res => {
+        if (!res.ok) {
+          console.debug(`Database sync returned status code: ${res.status}`);
         }
-      } catch (err) {
-        console.error(`Database auto-sync failed for key ${key}:`, err);
-      }
+      }).catch(err => {
+        // Suppress developer alerts in local offline mode
+        console.debug('Neon database sync skipped (running offline/local storage)');
+      });
+    } catch (e) {
+      // Offline fallback
     }
   };
 
